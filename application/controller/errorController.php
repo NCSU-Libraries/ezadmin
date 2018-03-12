@@ -50,4 +50,36 @@ class errorController extends baseController {
 		$this->registry->template->status = "<p>The Requested Document Requires Additional Permissions.</p>";
 		$this->registry->template->show('message');
 	}
+
+	public function internalerror()
+	{
+		$e = $this->registry->exception;
+		$this->registry->template->title = 'EZ Admin - 500 Internal Error';
+		$trace = array();
+		foreach($e->getTrace() as $stack) {
+			$trace[] = "<div class=\"stackSection\"><span class=\"stackLineLabel\">LINE:</span><span class=\"stackLine\">{$stack['line']}</span>" .
+				" in <span class=\"stackFile\">{$stack['file']}</span></div> " .
+			( '' != $stack['class']
+				? "<div class=\"stackSection\"><span class=\"stackClassLabel\">CLASS:</span><span class=\"stackClass\">{$stack['class']}</span>" .
+					"<span class=\"stackType\">{$stack['type']}</span>"
+				: ''
+			) .
+			( '' != $stack['function']
+				? (
+					'' == $stack['class']
+					? "<div class=\"stackSection\"><span class=\"stackFunctionLabel\">FUNCTION:</span>"
+					: ''
+				) . "<span class=\"stackFunction\">{$stack['function']}</span>" .
+					(
+						count($stack['args']) > 0
+						? "(<span class=\"stackArgs\">" . implode( ', ', $stack['args']) . ")</span>"
+						: '()'
+					)
+				: ''
+			) . '</div>';
+		}
+		$this->registry->template->status = "<p>" . $e->getMessage() . "</p>" . "<ul><li>" . implode('</li><li>', $trace) . "</li></ul>";
+		$this->registry->template->wideFormFactor = 1;
+		$this->registry->template->show('message');
+	}
 }

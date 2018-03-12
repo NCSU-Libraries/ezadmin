@@ -29,9 +29,14 @@ if ($titleLetter != $currentLetter
 	echo "<span class='resourceType'><span class='padding'>{$resource['type']}{$restricted}</span></span>\n";
 	$config_array = $resource['config'];
 	
-	if($resource['use_custom'] == 'F' && is_array($config_array)){
+	if($resource['use_custom'] == 'T'){
+		echo "<div class='configType'>Custom:</div><div class='configBlock'>\n";
+		echo "<div class='customConfig'><div class='customConfigOuter'><div class='customConfigInner'>{$resource['custom_config']}</div></div></div>";
+        echo "</div>\n";
+	} else {
 		echo "<div class='configType'>URLs:</div><ul class='configBlock'>\n";
 		$urlCount = 0;
+		$config_array = (array)$config_array;
 		foreach($config_array as $config){
 			$evenOrOdd = (
 			    $urlCount++ % 2 == 0
@@ -42,11 +47,6 @@ if ($titleLetter != $currentLetter
 			echo "<span class='configUrl'>{$config['config_value']}</span></li>\n";
 		}
 		echo "</ul>\n";
-	}
-	else{
-		echo "<div class='configType'>Custom:</div><div class='configBlock'>\n";
-		echo "<div class='customConfig'><div class='customConfigOuter'><div class='customConfigInner'>{$resource['custom_config']}</div></div></div>";
-        echo "</div>\n";
 	}
 	
 	echo "</div>\n";

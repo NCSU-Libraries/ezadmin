@@ -69,7 +69,8 @@ class router {
         	$this->getController('error');
             $this->action = 'notallowed';
         }
-        
+        $this->registry->user = $this->registry->auth->getUser();
+
         include $this->file;
         
         $class = $this->controller . 'Controller';
@@ -77,12 +78,18 @@ class router {
         
         if (is_callable(array($controller, $this->action)) == false){
             $action = 'index';
-        }
-        else{
+        } else{
             $action = $this->action;
         }
         
-        $controller->$action();
+        try {
+        	$controller->$action();
+        } catch (Exception $e){
+        	include($this->path . '/errorController.php');
+        	$this->registry->exception = $e;
+            $controller = new errorController($this->registry);
+            $controller->internalerror();
+        }
     }
     
     private function getController($default = '')

@@ -68,4 +68,19 @@ Class Template {
             include(APPLICATION_PATH . $this->_footer);
         }
     }
+    function makeCsv($name){
+        $path = APPLICATION_PATH . '/views' . '/' . $name . '.php';
+        if (file_exists($path) == false){
+            throw new Exception('Template not found in ' . $path);
+            return false;
+        }
+        foreach ($this->vars as $key => $value){
+            $$key = $value;
+        }
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=restrictedList.csv');
+
+        include ($path);
+
+    }
 }

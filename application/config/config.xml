@@ -1,34 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <config>
 	<db>
-		<host>localhost</host>
-		<user>AAA</user>
-		<password>AAA</password>
-		<schema>AAA</schema>
+		<host></host>
+		<user></user>
+		<password></password>
+		<schema></schema>
 	</db>
 	<auth>
 		<require>0</require>
 <!--	<userServerSource>PHP_AUTH_USER</userServerSource> -->
 	</auth>
 	<outputPath>[APPLICATION_PATH]data/output/</outputPath>
+	<pushUpdates>true</pushUpdates>
+	<uploadCommand>/usr/bin/rsync -avu --rsync-path=/usr/bin/rsync [[source]] [[target]]</uploadCommand>
+	<uploads>
+		<uploadTarget></uploadTarget>
+	</uploads>
 	<links>
 		<userGuideUrl>https://staff.lib.ncsu.edu/confluence/display/IT/EZProxy+Configuration+Tool</userGuideUrl>
 		<footer>
 			<link>
 				<label>NCSU Libraries</label>
 				<url>http://www.lib.ncsu.edu/</url>
-			</link>
-			<link>
-				<label>Catalog</label>
-				<url>http://www.lib.ncsu.edu/catalog/</url>
-			</link>
-			<link>
-				<label>Libraries Intranet</label>
-				<url>http://staff.lib.ncsu.edu/</url>
-			</link>
-			<link>
-				<label>Username/Password Resources</label>
-				<url>http://www.lib.ncsu.edu/eresources/altlogins/</url>
 			</link>
 		</footer>
 	</links>

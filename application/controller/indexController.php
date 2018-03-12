@@ -37,11 +37,18 @@ class indexController extends baseController
 	
 	private function populateResourceArray()
 	{
-		$resourceQuery = "SELECT id, title, custom_config, resource_type, use_custom, restricted FROM resource ORDER BY title";
+		$resourceQuery =
+			"SELECT r.id, title, custom_config, t.name AS resource_type, use_custom, restricted, note "
+			. "FROM resource AS r "
+			. "JOIN resource_type AS t ON t.`id` = r.`type` "
+			. "ORDER BY title";
 		$db = $this->registry->db;
 		$resourceQuery = $db->real_escape_string($resourceQuery);
 		$resourceResult = $db->query($resourceQuery);
 		$x = 0;
+		if (!$resourceResult) {
+			throw new Exception('No Resource Types Found. Error: ' . $db->error);
+		}
 		while($row = $resourceResult->fetch_array()){
 			$this->resourceArray[$x] = array();
 			$this->resourceArray[$x]['id'] = $row[0];
@@ -50,11 +57,12 @@ class indexController extends baseController
 			$this->resourceArray[$x]['custom_config'] = $row[2];
 			$this->resourceArray[$x]['use_custom'] = $row[4];
 			$this->resourceArray[$x]['restricted'] = $row[5];
+			$this->resourceArray[$x]['note'] = $row[6];
 			if(!empty($this->configArray[$row[0]])){
 				$this->resourceArray[$x]['config'] = $this->configArray[$row[0]];
 			}
 			else{
-				$this->resourceArray[$x]['config'] = "";
+				$this->resourceArray[$x]['config'] = NULL;
 			}
 			$x++;
 		}
@@ -63,10 +71,16 @@ class indexController extends baseController
 	private function populateConfigList()
 	{
 		$db = $this->registry->db;
-		$configQuery = "SELECT id, resource, config_type, config_value FROM config ORDER BY resource, config_type";
+		$configQuery = "SELECT c.id, resource, t.name AS config_type, config_value "
+			. "FROM config AS c "
+			. "JOIN config_type AS t ON c.type = t.id "
+			. "ORDER BY resource, config_type";
 		$configQuery = $db->real_escape_string($configQuery);
 		$configResult = $db->query($configQuery);
 		$resource = 0;
+		if (!$configResult) {
+			throw new Exception('No Resource Types Found. Error: ' . $db->error);
+		}
 		while($row = $configResult->fetch_array()){
 			if($resource != $row[1]){
 				$resource = $row[1];
@@ -83,32 +97,37 @@ class indexController extends baseController
 	private function getConfigListFor($id)
 	{
 		$db = $this->registry->db;
-		$configQuery = "SELECT id, resource, config_type, config_value FROM config WHERE resource = {$id} ORDER BY resource";
+		$configQuery = "SELECT id, resource, type, config_value FROM config WHERE resource = {$id} ORDER BY resource";
 		$configQuery = $db->real_escape_string($configQuery);
 		$configResult = $db->query($configQuery);
-		$resource = 0;
-		$returnArray = array();
-		while($row = $configResult->fetch_array()){
-			$returnArray[] = array(
-				'config_type' => $row[2],
-				'config_value' => $row[3]
-			);
+		if ($configResult) {
+			$resource = 0;
+			$returnArray = array();
+			while($row = $configResult->fetch_array()){
+				$returnArray[] = array(
+					'type' => $row[2],
+					'config_value' => $row[3]
+				);
+			}
 		}
 	}
 	
 	private function getResource($id)
 	{
-		$resourceQuery = "SELECT id, title, custom_config, resource_type, use_custom, restricted FROM resource WHERE id = {$id}";
+		$resourceQuery = "SELECT id, title, custom_config, type, use_custom, restricted, note FROM resource WHERE id = {$id}";
 		$db = $this->registry->db;
 		$resourceQuery = $db->real_escape_string($resourceQuery);
 		$resourceResult = $db->query($resourceQuery);
-		$row = $resourceResult->fetch_array();
-		return array(
-			'title' => $row[1],
-			'custom' => $row[2],
-			'type' => $row[3],
-			'use_custom' => $row[4]
-		);
+		if ($resourceResult) {
+			$row = $resourceResult->fetch_array();
+			return array(
+				'title' => $row[1],
+				'custom' => $row[2],
+				'type' => $row[3],
+				'use_custom' => $row[4],
+				'note' => $row[6]
+			);
+		}
 	}
 	
 	public function index()
@@ -129,8 +148,9 @@ class indexController extends baseController
 		$this->registry->template->title = 'EZ Admin - Confirm Delete';
 		$this->registry->template->status = "<p>Are you sure you want to delete {$resource['title']} ?</p>"
 		  . "<p>
-		  <a class='noButton' href='index.php?rt=index'>Cancel</a>
+		  <a class='noButton' href='index.php?rt=index#rid_{$resourceid}'>Cancel</a>
 		  <a class='yesButton' href='index.php?rt=index/save&resource_id={$resourceid}&delete_resource=true'>Yes</a>
+		  <span class='floatClear'>&nbsp;</span>
 		  </p>";
 		$this->registry->template->show('message');
 		
@@ -140,11 +160,13 @@ class indexController extends baseController
 	{
 		    $this->correctMagicQuotes();
 		    $db = $this->registry->db;
+		    $user = $this->registry->user;
 			$title = array_key_exists('resource_name', $_REQUEST) ? $_REQUEST['resource_name'] : '';
 			$custom_config = array_key_exists('custom_config', $_REQUEST) ? $_REQUEST['custom_config'] : '';
 			$resource_type = array_key_exists('resource_type', $_REQUEST) ? $_REQUEST['resource_type'] : '';
 			$use_custom = isset($_REQUEST['use_custom']) && 'true' == $_REQUEST['use_custom'] ? "T" : "F";
 			$restricted = isset($_REQUEST['is_restricted']) ? "T" : "F";
+			$note = array_key_exists('note', $_REQUEST)? $_REQUEST['note'] : '';
 			$resourceid = "";
 			$updateStatement = "";
 			if(isset($_REQUEST['delete_resource'])){
@@ -170,13 +192,7 @@ class indexController extends baseController
 					$updateStatement = "Successfully deleted the {$old_title} resource.<br />";
 				}
 				$deleteResourceStmt->close();
-				
-				
-				
-				
-			}
-			
-			elseif(isset($_REQUEST['save_resource']) && $_REQUEST['resource_id'] != ""){
+			} else if(isset($_REQUEST['save_resource']) && $_REQUEST['resource_id'] != ""){
 				$this->registry->template->title = 'EZ Admin - Edited Resource';
 				//echo "Updating!";
 				//print_r($_REQUEST);
@@ -185,7 +201,7 @@ class indexController extends baseController
 				$current_title = "";
 				$current_custom_config = "";
 				$current_resource_type = "";
-				$selectResource = "SELECT title, custom_config, resource_type FROM resource WHERE id = ?";
+				$selectResource = "SELECT title, custom_config, type FROM resource WHERE id = ?";
 				$selectStmt = $db->prepare($selectResource);
 				$selectStmt->bind_param('i', $resourceid);
 				$selectStmt->execute();
@@ -193,10 +209,10 @@ class indexController extends baseController
 				$selectStmt->fetch();
 				$selectStmt->close();
 				//if($current_title != "" && $current_resource_type != ""){
-				if($current_title != ""){	
-					$resourceUpdateQuery = "UPDATE resource SET title=?, custom_config=?, resource_type=?, use_custom=?, restricted=? WHERE id = ?";
+				if($current_title != trim('')){
+					$resourceUpdateQuery = "UPDATE resource SET title=?, custom_config=?, type=?, use_custom=?, restricted=?, note=? , last_edited_by_user=? WHERE id = ?";
 					$updateStmt = $db->prepare($resourceUpdateQuery);
-					$updateStmt->bind_param('sssssi', $title, $custom_config, $resource_type, $use_custom, $restricted, $resourceid);
+					$updateStmt->bind_param('ssissssi', $title, $custom_config, $resource_type, $use_custom, $restricted, $note, $user, $resourceid);
 					$updateStmt->execute();
 					if($updateStmt->affected_rows > 0){
 						$updateStatement = "Successfully updated the <a href='#rid_" . $resourceid . "'>" . $title . "</a> resource.<br />";
@@ -205,36 +221,53 @@ class indexController extends baseController
 					$configs = array();
 					foreach ($_REQUEST as $key=>$value){
 						$temp = explode("_", $key);
-						if($temp[0] == "url"){
+						if($temp[0] == "url" && trim($value) != ''){
 							$configs[$temp[2]][$temp[1]] = $value;
 						}
 					}
 					$urlArray = array();
 					foreach($configs as $config){
-						$urlname = $config['name'];
-						$urltype = $config['select'];
-						$urlid = $config['id'];
-						array_push($urlArray, $urlid);
-						if($urlid != "" && ($urlname != "" && $urlname != null)){
-							$configUpdate= "UPDATE config SET resource=?, config_type=?, config_value=? WHERE id=?";
-							$configUpdateStmt = $db->prepare($configUpdate);
-							$configUpdateStmt->bind_param('issi', $resourceid, $urltype, $urlname, $urlid);
-							$configUpdateStmt->execute();
-							if($configUpdateStmt->affected_rows > 0){
-								$updateStatement .= "Successfully updated the $urlname configuration value for <a href='#rid_" . $resourceid . "'>" . $title . "</a>.<br />";
+						$urlid = (
+							array_key_exists('id', $config)
+							? $config['id']
+							: ''
+						);
+						if (!array_key_exists('name', $config)) {
+							if ('' != $urlid) {
+								$deleteUrl = "DELETE FROM config WHERE id = ?";
+								$deleteUrlStmt = $db->prepare($deleteUrl);
+								$deleteUrlStmt->bind_param('i', $urlid);
+								$deleteUrlStmt->execute();
+								if($deleteUrlStmt->affected_rows > 0){
+									$updateStatement .= "Successfully deleted the <b>blank</b> configuration value for <a href='#rid_" . $resourceid . "'>" . $title . "</a>. <br />";
+								}
+								$deleteUrlStmt->close();
 							}
-							$configUpdateStmt->close();
-						}
-						else{
-							$configInsert = "INSERT INTO config (resource, config_type, config_value) VALUES (?, ?, ?)";
-							$configInsertStmt = $db->prepare($configInsert);
-							$configInsertStmt->bind_param('iss', $resourceid, $urltype, $urlname);
-							$configInsertStmt->execute();
-							array_push($urlArray, $db->insert_id);
-							if($configInsertStmt->affected_rows > 0){
-								$updateStatement .= "Successfully added the $urlname configuration value for <a href='#rid_" . $resourceid . "'>" . $title . "</a>.<br /> ";								
+						} else {
+							$urlname = $config['name'];
+							$urltype = $config['select'];
+							array_push($urlArray, $urlid);
+							if('' != $urlid && ($urlname != "" && !is_null($urlname))){
+								$configUpdate= "UPDATE config SET resource=?, type=?, config_value=? WHERE id=?";
+								$configUpdateStmt = $db->prepare($configUpdate);
+								$configUpdateStmt->bind_param('iisi', $resourceid, $urltype, $urlname, $urlid);
+								$configUpdateStmt->execute();
+								if($configUpdateStmt->affected_rows > 0){
+									$updateStatement .= "Successfully updated the $urlname configuration value for <a href='#rid_" . $resourceid . "'>" . $title . "</a>.<br />";
+								}
+								$configUpdateStmt->close();
 							}
-							$configInsertStmt->close();
+							else{
+								$configInsert = "INSERT INTO config (resource, type, config_value) VALUES (?, ?, ?)";
+								$configInsertStmt = $db->prepare($configInsert);
+								$configInsertStmt->bind_param('iss', $resourceid, $urltype, $urlname);
+								$configInsertStmt->execute();
+								array_push($urlArray, $db->insert_id);
+								if($configInsertStmt->affected_rows > 0){
+									$updateStatement .= "Successfully added the $urlname configuration value for <a href='#rid_" . $resourceid . "'>" . $title . "</a>.<br /> ";
+								}
+								$configInsertStmt->close();
+							}
 						}
 					}
 					$current_configId = "";
@@ -242,7 +275,7 @@ class indexController extends baseController
 					$current_configValue = "";
 					$currentIdArray = array();
 					$existingTitlesArray = array();
-					$configSelectQuery = "SELECT id, config_type, config_value FROM config WHERE resource = ?";
+					$configSelectQuery = "SELECT id, type, config_value FROM config WHERE resource = ?";
 					$configStmt = $db->prepare($configSelectQuery);
 					$configStmt->bind_param('i', $resourceid);
 					$configStmt->execute();
@@ -264,47 +297,54 @@ class indexController extends baseController
 						}
 						$deleteUrlStmt->close();
 					}
+				} else {
+					$updateStatement = "Failed to update a resource. Not found in the database.<br />";
 				}
-				else{
-					print_r("404ed!!one!!!111");
-					die;
-				}
-			}
-			else{
+			} else {
 				//echo "Adding!";
 				//print_r($_REQUEST);
 				//die;
-				$insert = "INSERT INTO resource (title, custom_config, resource_type, use_custom, restricted) VALUES (?, ?, ?, ?, ?)";
+				$insert = "INSERT INTO resource (title, custom_config, type, use_custom, restricted, note) VALUES (?, ?, ?, ?, ?, ?)";
 				$stmt = $db->prepare($insert);
-				$stmt->bind_param('sssss', $title, $custom_config, $resource_type, $use_custom, $restricted);
-				$stmt->execute();
-				$resourceid = $db->insert_id;
-				if($stmt->affected_rows > 0){
-					$updateStatement ="Successfully added <a href='#rid_" . $resourceid . "'>" . $title . "</a> resource.<br />";
-				}
-				$stmt->close();
-				
-				$configs = array();
-				foreach ($_REQUEST as $key=>$value){
-					$temp = explode("_", $key);
-					if($temp[0] == "url"){
-						$configs[$temp[2]][$temp[1]] = $value;
+				if ($stmt) {
+					$stmt->bind_param('ssisss', $title, $custom_config, $resource_type, $use_custom, $restricted, $note);
+					$stmt->execute();
+					$resourceid = $db->insert_id;
+					if($stmt->affected_rows > 0){
+						$updateStatement ="Successfully added <a href='#rid_" . $resourceid . "'>" . $title . "</a> resource.<br />";
 					}
-				}
-				foreach($configs as $config){
-					$urlname = $config['name'];
-					$urltype = $config['select'];
-					if($urlname != "" || $urlname != null){
-						$configInsert = "INSERT INTO config (resource, config_type, config_value) VALUES (?, ?, ?)";
-						$configStmt = $db->prepare($configInsert);
-						$configStmt->bind_param('iss', $resourceid, $urltype, $urlname);
-						$configStmt->execute();
-						if($configStmt->affected_rows > 0){
-							$updateStatement .="<br /> Successfully added the $urlname configuration value.";
+					$stmt->close();
+					$configs = array();
+					foreach ($_REQUEST as $key=>$value){
+						$temp = explode("_", $key);
+						if($temp[0] == "url"){
+							if(!array_key_exists($temp[2], $configs)) {
+								$configs[$temp[2]] = array();
+							}
+							$configs[$temp[2]][$temp[1]] = $value;
 						}
-						$configStmt->close();
 					}
-				
+					foreach($configs as $config){
+						$urlname = $config['name'];
+						$urltype = $config['select'];
+						if($urlname != '' && !is_null($urlname)){
+							$configInsert = "INSERT INTO config (resource, type, config_value) VALUES (?, ?, ?)";
+							$configStmt = $db->prepare($configInsert);
+							if ($configStmt) {
+								$configStmt->bind_param('iis', $resourceid, $urltype, $urlname);
+								$configStmt->execute();
+								if($configStmt->affected_rows > 0){
+									$updateStatement .="<br /> Successfully added the $urlname configuration value.";
+								}
+								$configStmt->close();
+							} else {
+								$updateStatement .= "Failed to add {$urlname} configuration value to {$title} resource. DB save failed.<br />";
+							}
+						}
+
+					}
+				} else {
+					$updateStatement = "Failed to add {$title} resource. DB save failed.<br />";
 				}
 			}
 			//When deleteing resources, we need a confirmation box.
@@ -327,17 +367,13 @@ class indexController extends baseController
 			$this->populateConfigList();
 			$this->populateResourceArray();
 	        $path = $this->registry->outputPath;
+	        $pushNow = $this->registry->pushUpdates;
 			$error = '';
-			$label = "########";
 				
 			$restrictedTypes = array('T', 'F');
-			$resourceTypes = array('Journal', 'Database','Platform','Aggregator','Ebook');
-			
 			$restrictedStart = "####### This is the list of restricted resrources  #########\nGroup restricted\n\n";
-			$unrestrictedStart = "####### This is the list of unrestricted resrources  #########\nGroup unrestricted\n\nIncludeFile sage.txt\nIncludeFile oxford.txt\n\n";
-			
-			$restrictedUploadConf = array();
-			$unrestrictedUploadConf = array();
+//			$unrestrictedStart = "####### This is the list of unrestricted resrources  #########\nGroup unrestricted\n\nIncludeFile sage.txt\nIncludeFile oxford.txt\n\n"; //saving as an example of how to manually include a txt file on the proxy server
+			$unrestrictedStart = "####### This is the list of unrestricted resrources  #########\nGroup unrestricted\n\n";
 			
 			$writeSuccess = 1;
 			
@@ -347,29 +383,24 @@ class indexController extends baseController
 				$fh = fopen($file, 'w');
 				if($fh){						
 					$writeSuccess = $writeSuccess && fwrite($fh, $writeStart);
-					foreach ($resourceTypes as $resourceType){
-						$writeLabel = $label . " " . $resourceType . " " . $label . "\n\n";
-						$writeSuccess = $writeSuccess && fwrite($fh, $writeLabel);
 						foreach($this->resourceArray as $resource){
-							if($resource['type'] == $resourceType){
-								if($resource['restricted'] == $restricted){
-									$resourceString = "T " . $resource['title'] . "\n";
-									$writeSuccess = $writeSuccess && fwrite($fh, $resourceString);
-									if (is_array($resource['config']) && $resource['use_custom'] == 'F'){
-										foreach ($resource['config'] as $config){
-											$configString = $config['config_type'] . " " . $config['config_value'] . "\n";
-											$writeSuccess = $writeSuccess && fwrite($fh, $configString);
-										}
-									}
-									else{
-										$configString = $resource['custom_config'] . "\n";
+							if($resource['restricted'] == $restricted){
+								$resourceString = "T " . $resource['title'] . "\n";
+								$writeSuccess = $writeSuccess && fwrite($fh, $resourceString);
+								if ($resource['use_custom'] == 'T'){
+									$configString = $resource['custom_config'] . "\n";
+									$writeSuccess = $writeSuccess && fwrite($fh, $configString);
+								}
+								else{
+									$resourceConfig = (array)$resource['config'];
+									foreach ($resourceConfig as $config){
+										$configString = $config['config_type'] . " " . $config['config_value'] . "\n";
 										$writeSuccess = $writeSuccess && fwrite($fh, $configString);
 									}
-									$writeSuccess = $writeSuccess && fwrite($fh, "\n");
 								}
+								$writeSuccess = $writeSuccess && fwrite($fh, "\n");
 							}
 						}
-					}
 					fclose($fh);
 				} else {
 					$error .= "<p>An error occured while writing to the " . ($restricted == 'T' ? '' : 'un') . "restricted configuration file.<p>";
@@ -379,15 +410,18 @@ class indexController extends baseController
 				}
 			}
 			
-			if('' == trim($error)){
-				if (!$this->upload($path .'restrictedoutput.txt',$restrictedUploadConf)){
-					$error .= "<p>An error occured while uploading the unrestricted configuration file.<p>";
-				}
-				if (!$this->upload($path. 'unrestrictedoutput.txt',$unrestrictedUploadConf)){
-					$error .= "<p>An error occured while uploading the restricted configuration file.<p>";
+			if('' == trim($error) && $pushNow){
+				foreach ($this->registry->uploadTargets->uploadTarget as $uploadTarget){
+					if (!rsyncAdapter::run($this->registry, $path . 'restrictedoutput.txt', $uploadTarget)){
+						$error .= "<p>An error occured while uploading the unrestricted configuration file.<p>";
+						$error .= '<p>' . rsyncAdapter::getErrorMessage() . '</p>';
+					}
+					if (!rsyncAdapter::run($this->registry, $path . 'unrestrictedoutput.txt', $uploadTarget)){
+						$error .= "<p>An error occured while uploading the restricted configuration file.<p>";
+						$error .= '<p>' . rsyncAdapter::getErrorMessage() . '</p>';
+					}
 				}
 			}
-			
 			$this->registry->template->status = (
 				'' == trim($error) 
 				? 'Configuration Files Written.' 
@@ -397,12 +431,7 @@ class indexController extends baseController
 		}
 	}
 	
-	// TODO: verify success of upload
-	private function upload($localFilename, $uploadConfiguaration)
-	{
-		return true;		
-	}
-	
+
     private function correctMagicQuotes()
     {
         if(ini_get('magic_quotes_gpc')){

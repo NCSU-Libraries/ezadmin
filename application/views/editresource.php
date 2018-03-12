@@ -1,7 +1,15 @@
 <script type="text/javascript">
+
+function getConfigTypes(){
+	return <?php print(json_encode($configTypes, false));?>;
+}
+
 function updateFormState()
 {
-<?php if(isset($resourceInfo) && ($resourceInfo['use_custom'] == "T")){?>
+<?php
+	if(
+		(isset($resourceInfo) && ($resourceInfo['use_custom'] == "T"))
+	) {?>
     $("#toggleConfig").removeClass('urlOption');
     
 <?php } ?>
@@ -10,13 +18,7 @@ function updateFormState()
 
 <?php include('scripts/editResource.js');?>
 </script>
-<?php 
-
-$journal = (isset($resourceInfo) && $resourceInfo['resource_type'] == 'Journal') ? "selected = \"yes\"" : "";
-$database = (isset($resourceInfo) && $resourceInfo['resource_type'] == 'Database') ? "selected = \"yes\"" : "";
-$platform = (isset($resourceInfo) && $resourceInfo['resource_type'] == 'Platform') ? "selected = \"yes\"" : "";
-$aggregator = (isset($resourceInfo) && $resourceInfo['resource_type'] == 'Aggregator') ? "selected = \"yes\"" : "";
-$ebook = (isset($resourceInfo) && $resourceInfo['resource_type'] == 'Ebook') ? "selected = \"yes\"" : "";
+<?php
 $resourceid = isset($resourceInfo) && array_key_exists('resource_id',$resourceInfo) ? $resourceInfo['resource_id'] : "";
 $resourceTitle = isset($resourceInfo['title']) ? $resourceInfo['title'] : "";
 $default = (isset($resourceInfo) && $resourceInfo['custom_config'] == "") ? "checked = \"checked\"": "";
@@ -24,6 +26,9 @@ $custom = (isset($resourceInfo) && $resourceInfo['custom_config'] != "") ? "chec
 $toggleText = (isset($resourceInfo) && $resourceInfo['custom_config'] != "" ? 'use standard URLs' : 'use custom configuration');
 $customConfig = (isset($resourceInfo) && $resourceInfo['custom_config'] != "") ? $resourceInfo['custom_config']: "";
 $restricted = (isset($resourceInfo) && $resourceInfo['restricted'] == "T") ? "checked = \"checked\"": "";
+$note = isset($resourceInfo['note']) ? $resourceInfo['note'] : "";
+$last_edit_date = isset($resourceInfo['last_edit_date']) ? $resourceInfo['last_edit_date'] : "";
+$last_edited_by = isset($resourceInfo['last_edited_by']) ? $resourceInfo['last_edited_by'] : "";
 
 //New problem.  How am I going to dynamically genereate the page to account for the multiple URLs?
 ?>
@@ -34,41 +39,53 @@ $restricted = (isset($resourceInfo) && $resourceInfo['restricted'] == "T") ? "ch
 
 <label for="resource_name">Resource Name:</label><input type="text" value="<?php print(htmlentities($resourceTitle)); ?>" size="50" name="resource_name" id="resource_name" />
 <label for="resource_type">Resource Type:</label><select name="resource_type" id="resource_type">
-  <option <?php print($journal); ?>>Journal</option>
-  <option <?php print($database); ?>>Database</option>
-  <option <?php print($platform); ?>>Platform</option>
-  <option <?php print($aggregator); ?>>Aggregator</option>
-  <option <?php print($ebook); ?>>Ebook</option>
+<?php
+foreach($resourceTypes as $name => $id) {
+	$selected = (
+		isset($resourceInfo) && $resourceInfo['resource_type'] == $name
+		? 'selected="selected"'
+		: ''
+	);
+	?>
+  <option <?php print($selected); ?> value="<?php print($id); ?>"><?php print($name);?></option>
+<?php
+}
+?>
 </select>
 
 <label for="is_restricted">Restricted: </label><input type="checkbox" name="is_restricted" value="true" id="is_restricted" <?php print($restricted); ?>/>
+	<label for="note">Notes: </label><textarea name="note" id="note" cols="50" rows="3" maxlength="500"><?php print(htmlentities($note)); ?></textarea><br>
 <div id="configSection">
     <span class="formSectionHeader">Configuration:</span>
     <a href="#" id="addUrl" onClick="return false;" class="addUrlButton">add URL</a>
     <a href="#" id="toggleConfig" onClick="return false;" class="configTypeToggle urlOption"><?php print($toggleText); ?></a>
     <div id="configBody">
       <div id="configUrls">
-<?php //I'm going to need a foreach loop that is going to loop through the entire array.
+<?php
     $x = 0;
     if(isset($configInfo)){
         foreach($configInfo as $config){
             $type = $config['config_type'];
             $value = $config['config_value'];
             $configId = $config['id'];
-            $host = ($config['config_type'] == 'H') ? "selected = \"yes\"" : "";
-            $domain = ($config['config_type'] == 'D') ? "selected = \"yes\"" : "";
-            $domainjs = ($config['config_type'] == 'DJ') ? "selected = \"yes\"" : "";
-            $hostjs = ($config['config_type'] == 'HJ') ? "selected = \"yes\"" : "";
 ?> 
 <div class="urlConfigBlock">
 <input type="hidden" name="url_id_<?php print($x); ?>" value="<?php print($configId); ?>" />
 <a class="deleteUrlButton" href="#" onClick="return false;" id="delete_<?php print($value); ?>" class="del">delete URL</a>
 <label for="url_name_<?php print($x); ?>">URL:</label><input class="urlInput" type="text" value="<?php print(htmlentities($value)); ?>" size="50" name="url_name_<?php print($x); ?>" id="url_name_<?php print($x); ?>" />
 <label for="url_select_<?php print($x); ?>">URL Type:</label><select name="url_select_<?php print($x); ?>">
-<option <?php print($host); ?>>H</option>
-<option <?php print($domain); ?>>D</option>
-<option <?php print($domainjs); ?>>DJ</option>
-<option <?php print($hostjs); ?>>HJ</option>
+<?php
+foreach($configTypes as $name => $id) {
+	$selected = (
+		$type == $name
+		? 'selected="selected"'
+		: ''
+	);
+	?>
+  <option <?php print($selected); ?> value="<?php print($id); ?>"><?php print($name);?></option>
+<?php
+}
+?>
 </select>
 </div>
 
@@ -82,10 +99,9 @@ $restricted = (isset($resourceInfo) && $resourceInfo['restricted'] == "T") ? "ch
 <a class="deleteUrlButton" href="#" id="delete_0" class="del">delete URL</a>
 <label for="url_name_0">URL:</label><input type="text" value="" size="50" name="url_name_0" id="url_name_0" />
 <label for="url_select_0">URL Type:</label><select name="url_select_0" id="url_select_0">
-<option>H</option>
-<option>D</option>
-<option>DJ</option>
-<option>HJ</option>
+<?php foreach($configTypes as $name => $id) { ?>
+	<option value="<?php print($id); ?>"><?php print($name);?></option>
+<?php } ?>
 </select>
 
 </div>
@@ -100,10 +116,18 @@ $restricted = (isset($resourceInfo) && $resourceInfo['restricted'] == "T") ? "ch
     </div>
 </div>
 <span class="floatClear">&nbsp;</span>
-<input class="rightMargin" type="submit" value="Save Resource" name="save_resource"/>
-<?php 
+	<?php
+	if($last_edit_date != "" || $last_edit_date !="") {
+		?>
+        <div><span class="formSectionHeader">Last Edited </span><?php echo($last_edit_date.' by '.$last_edited_by."</div>"); ?>
+        <span class="floatClear">&nbsp;</span>
+<?php
+	}
+?>
+    <input class="rightMargin" type="submit" value="Save Resource" name="save_resource"/>
+<?php
     if($resourceid != ""){
-?> 
+?>
 <input type="button" class="rightMargin" value="Delete Resource" name="delete_resource" id="delete_resource"/>
 <?php
     }

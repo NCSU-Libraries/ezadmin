@@ -56,7 +56,7 @@ function updateConfigDisplay()
 function activateDeletePrompt(){
 	var par = $(this).parent();
 	var myUrl = $('.urlInput', par).val();
-	var myType = $('select', par).val();
+	var myType = $('option[value="' + $('select', par).val() + '"]',par).html();
 	var remv = confirm(
 	    'Are you sure you want to delete that configuration option?\n\n'
 	    + 'URL: ' + myUrl + '\nURL Type: ' + myType
@@ -75,15 +75,17 @@ function activateDeletePrompt(){
 		$("#toggleConfig").live('click keypress', toggleConfigDisplay);	
 	
 		$("#addUrl").live('click keypress', function (){
+			var configTypes = getConfigTypes();
+			var configOptions = '';
+			for(type in configTypes){
+					configOptions += '<option value="' + configTypes[type] + '">' + type + '</option>';
+			}
 			$("#configUrls .floatClear").before(
 					'<div class="urlConfigBlock">'
 					+ '<a class="deleteUrlButton" href="#" onClick="return false;" id="delete_' + x + '" class="del">delete URL</a>'
 					+ '<label for="url_name_' + x + '">URL:</label><input type="text" value="" size="50" name="url_name_' + x + '" id="url_name_' + x + '" />'
 					+ '<label for="url_select_' + x + '">URL Type:</label><select name="url_select_' + x + '">'
-					+ '<option>H</option>'
-					+ '<option >D</option>'
-					+ '<option>DJ</option>'
-					+ '<option>HJ</option>'
+					+ configOptions
 					+ '</select>'
 					+ '</div>'
 		    );
@@ -128,17 +130,22 @@ function testing(){
 	if(createdURLvals < 1 && useCustom == "false"){
 		alert("There is no URL data.  Please insert URL data or use a custom configuration.");
 		return false;
+
 	}
 	var URLExists = false;
+	var URLsPopulated = 0;
 	for(y = 0; y < createdURLvals; y++){
 		var urlValue = document.getElementById("url_name_"+y+"");
 		if(urlValue != null && useCustom == "false"){
 			URLExists = true;
-			if(urlValue.value == "" || urlValue.value == null){
-				alert("One of the URL names is blank.");
-				return false;
+			if(!(urlValue.value == "") && urlValue.value){
+				URLsPopulated++;
 			}
 		}
+	}
+	if (URLsPopulated == 0 && useCustom == "false") {
+		alert("All of the URL names are blank.");
+		return false;
 	}
 	if (!URLExists && useCustom == "false"){
 		alert("There is no URL data.  Please insert URL data or use a custom configuration.");

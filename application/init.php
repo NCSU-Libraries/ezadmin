@@ -58,5 +58,5 @@ function __autoload($class_name)
 
 $registry = Registry::getInstance();
 $registry->config = Config::getInstance();
-$registry->db = ezproxydb::getInstance(); 
+$registry->db = ezproxydb::getInstance();
 $registry->auth = ezproxyauth::getInstance();

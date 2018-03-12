@@ -30,7 +30,9 @@ class ezproxyauth{
 	protected static $_instance;
 	
 	private static $_userList = array();
-	
+
+	private $user = null;
+
 	private function __construct()
 	{
         $registry = registry::getInstance();
@@ -49,7 +51,7 @@ class ezproxyauth{
 		return self::$_instance;
 	}
 
-	private static function populateList($db)
+	private function populateList($db)
 	{
 		$userQuery = "SELECT user FROM auth";
 		$userQuery = $db->real_escape_string($userQuery);
@@ -60,27 +62,35 @@ class ezproxyauth{
 		}
 	}
 
-    public static function authenticate()
+    public function authenticate()
     {
     	if (!Config::falsey(Config::get('auth:require'))) {
 	        $userServerSource = 
 	        	Config::has('auth:userServerSource') 
 	        	? Config::get('auth:userServerSource') 
 	        	: false;
-	        $user =
+	        $this->user =
 	        	$userServerSource && array_key_exists($userServerSource,$_SERVER)
 	        	? $_SERVER[$userServerSource]
 	        	: (
-	        		array_key_exists('PHP_AUTH_USER', $_SERVER)
-	        		? $_SERVER['PHP_AUTH_USER']
+	        		array_key_exists('REMOTE_USER', $_SERVER)
+	        		? $_SERVER['REMOTE_USER']
 	        		: ''
 	        	);
-	        return self::isAllowed($user);
+	        return self::isAllowed($this->user);
     	} else {
+			$this->user = array_key_exists('REMOTE_USER', $_SERVER)
+					? $_SERVER['REMOTE_USER']
+					: '';
     		return true;
     	}
     }	
-	
+
+    public function getUser()
+	{
+		return $this->user;
+	}
+
 	public static function isAllowed($user='')
 	{
 		return(!('' == $user) && in_array($user,self::$_userList));

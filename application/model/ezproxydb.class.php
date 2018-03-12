@@ -72,6 +72,56 @@ class ezproxydb extends mysqli{
 	private function __clone()
 	{
 		
-	}	
+	}
 	
+	protected static function _getTypes($table)
+	{
+		$db = self::$instance;
+		$typeMap = array();
+		$selectQuery =
+			"SELECT t.id, t.name "
+			. " FROM {$table} AS t "
+			. " ORDER BY t.id";
+		$typeResult = $db->query($selectQuery);
+		if (!$typeResult) {
+			throw new Exception('No Config Types Found. Error: ' . $db->error);
+		}
+		while($row = $typeResult->fetch_array()){
+			$typeMap[$row[1]] = $row[0];
+		}
+		return $typeMap;
+	}
+
+    public static function getRestrictedResources()
+    {
+
+        try {
+            $db = self::$instance;
+            $selectQuery =
+                "select r.title, rt.name, r.note  "
+                . "from resource as r left join (resource_type as rt) "
+                . "on (r.type = rt.id) "
+                . "where r.restricted = True;";
+
+            $result = $db->query($selectQuery);
+            WHILE($row = $result->fetch_row()){
+                $resultArray[]=$row;
+            };
+
+            $result->close();
+        } catch (Exception $e){
+            return array("There was an error:", $e);
+        }
+        return $resultArray;
+    }
+
+	public static function getResourceTypes()
+	{
+		return self::_getTypes('resource_type');
+	}
+
+	public static function getConfigTypes()
+	{
+		return self::_getTypes('config_type');
+	}
 }

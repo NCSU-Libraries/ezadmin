@@ -95,7 +95,8 @@ class Config{
 					$currentPosition = $currentPosition->$subName;
 				}
 			} else {
-				throw new Exception('Requested configuration option is not available.');
+				$nameString = implode(':', $name);
+				throw new Exception("Requested configuration option \"{$nameString}\" is not available.");
 			}
 		}
 	}

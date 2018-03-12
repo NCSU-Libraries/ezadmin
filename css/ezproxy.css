@@ -58,8 +58,7 @@ body {
   list-style:none; 
   padding:0; 
   margin:0; 
-  display:block; 
-  width: 40em;
+  display:block;
   float:right;
 }
 .header li {
@@ -67,20 +66,16 @@ body {
   margin:0; 
   display:block; 
   float:left;
-  width:23%;
-  background-color:#fff;
-}
-.header li.wide {
-  width:31%;
-}
-.header li.current {
   background-color:transparent;
 }
 
+.header li.current {
+  background-color:#fff;
+}
+
 .header li a {
-  padding: 0.25em 0 0.5em 0;
-  display:block; 
-  width:100%;
+  padding: 0.25em 1.5em 0.5em 1.5em;
+  display:block;
   text-align:center;
   color:#000;
   text-decoration:none;
@@ -96,7 +91,7 @@ body {
   display:block; 
   width:350px;
   height:80px;
-  background-image:url(../images/ez_admin_logo.gif);b
+  background-image:url(../images/ez_admin_logo.gif);
   ackground-position:top left;
   background-repeat:no-repeat;
 }
@@ -392,7 +387,7 @@ form {
 .formSectionHeader{
   float:left;
   display:block;
-  width:15em;
+  width:8em;
 }
 
 #addUrl, #toggleConfig, .deleteUrlButton{
@@ -436,4 +431,8 @@ form {
   background-image:url(../images/toggle2.gif);
   background-position:top left;
   background-repeat:no-repeat;
+}
+
+textarea#note {
+  margin-bottom: 1em;
 }

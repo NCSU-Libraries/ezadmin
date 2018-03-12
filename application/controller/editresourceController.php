@@ -40,35 +40,55 @@ class editresourceController extends baseController {
 			$this->populateConfigInfo($_REQUEST['resource_id']);
             $this->registry->template->title = 'EZ Admin - Edit Resource';
 		} else {
+			$this->populateResourceInfo();
 			$this->registry->template->title = 'EZ Admin - Add Resource';
 			$this->registry->template->status = 'Please enter information for the new resource below.';
 		}
 		$this->registry->template->show('editresource');
 	}
 	
-	public function populateResourceInfo($resourceid)
+	public function populateResourceInfo($resourceid = NULL)
 	{
 		$db = $this->registry->db;
-		$title = "";
-		$custom_config = "";
-		$resource_type = "";
-		$use_custom = "";
-		$restricted = "";
-		$selectResourceQuery = "SELECT id, title, custom_config, resource_type, use_custom, restricted FROM resource WHERE id = ?";
-		$stmt = $db->prepare($selectResourceQuery);
-		$stmt->bind_param('i', $resourceid);
-		$stmt->execute();
-		$stmt->bind_result($id, $title, $custom_config, $resource_type, $use_custom, $restricted);
-		while($stmt->fetch()){
-			$this->resourceInfo['resource_id'] = $id;
-			$this->resourceInfo['title'] = $title;
-			$this->resourceInfo['custom_config'] = $custom_config;
-			$this->resourceInfo['resource_type'] = $resource_type;
-			$this->resourceInfo['use_custom'] = $use_custom;
-			$this->resourceInfo['restricted'] = $restricted;
+		if (!is_null($resourceid)) {
+			$id = '';
+			$title = "";
+			$custom_config = "";
+			$resource_type = "";
+			$use_custom = "";
+			$restricted = "";
+			$note = "";
+			$last_edit_date = "";
+			$last_edited_by = "";
+			$selectResourceQuery =
+				"SELECT r.id, r.title, r.custom_config, t.name AS resource_type, r.use_custom, r.restricted, r.note, r.last_edit_date, r.last_edited_by_user "
+				. " FROM resource as r "
+				. " JOIN resource_type AS t ON t.`id` = r.`type` "
+				. " WHERE r.id = ?";
+			$stmt = $db->prepare($selectResourceQuery);
+			if (!$stmt) {
+				throw new Exception($db->error);
+			}
+
+			$stmt->bind_param('i', $resourceid);
+			$stmt->execute();
+			$stmt->bind_result($id, $title, $custom_config, $resource_type, $use_custom, $restricted, $note, $last_edit_date, $last_edited_by);
+			while($stmt->fetch()){
+				$this->resourceInfo['resource_id'] = $id;
+				$this->resourceInfo['title'] = $title;
+				$this->resourceInfo['custom_config'] = $custom_config;
+				$this->resourceInfo['resource_type'] = $resource_type;
+				$this->resourceInfo['use_custom'] = $use_custom;
+				$this->resourceInfo['restricted'] = $restricted;
+				$this->resourceInfo['note'] = $note;
+				$this->resourceInfo['last_edit_date'] = $last_edit_date;
+				$this->resourceInfo['last_edited_by'] = $last_edited_by;
+			}
+			$stmt->close();
+			$this->registry->template->resourceInfo = $this->resourceInfo;
 		}
-		$stmt->close();
-		$this->registry->template->resourceInfo = $this->resourceInfo;
+		$this->registry->template->resourceTypes = $db->getResourceTypes();
+		$this->registry->template->configTypes = $db->getConfigTypes();
 	}
 		
 	public function populateConfigInfo($resourceid)
@@ -77,7 +97,11 @@ class editresourceController extends baseController {
 		$type = "";
 		$value = "";
 		$id = "";
-		$selectConfigQuery = "SELECT id, config_type, config_value FROM config WHERE resource = ?";
+		$selectConfigQuery =
+			"SELECT c.id, t.name AS config_type, c.config_value "
+			. " FROM config AS c"
+			. " JOIN config_type AS t ON c.`type` = t.id"
+			. " WHERE resource = ?";
 		$stmt = $db->prepare($selectConfigQuery);
 		$stmt->bind_param('i', $resourceid);
 		$stmt->execute();

@@ -1,7 +1,6 @@
 <?php
 
 $currentSectionClass = ' class="current"';
-$currentSectionClassWide = ' class="current wide"';
 $userGuideUrl = $this->registry->config->get('links:userGuideUrl');
 ?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"> 
 <html xmlns="http://www.w3.org/1999/xhtml"> 
@@ -23,8 +22,9 @@ $userGuideUrl = $this->registry->config->get('links:userGuideUrl');
         <ul>
           <li<?php print('index' == $currentRt && 'export' != $currentAct ? $currentSectionClass : ''); ?>><a href="index.php">resource list</a></li>
           <li<?php print('editresource' == $currentRt ? $currentSectionClass : ''); ?>><a href="index.php?rt=editresource">add resource</a></li>
-          <li<?php print('index' == $currentRt && 'export' == $currentAct ? $currentSectionClassWide : ' class="wide"'); ?>><a href="index.php?rt=index/export">export to ezproxy</a></li>
-          <li><a href="<?php print($userGuideUrl); ?>">user's guide</a> </li>	
+          <li<?php print('index' == $currentRt && 'export' == $currentAct ? $currentSectionClass : ''); ?>><a href="index.php?rt=index/export">export to ezproxy</a></li>
+          <li><a href="<?php print($userGuideUrl); ?>">user's guide</a> </li>
+          <li><a href="index.php?rt=restrictedlist">download restricted list</a></li>
         </ul>
       </div>
       <div class="main">
@@ -32,4 +32,4 @@ $userGuideUrl = $this->registry->config->get('links:userGuideUrl');
         <div class="message">
           <?php print($status); ?>
         </div>
-      <?php } ?>
+      <?php }

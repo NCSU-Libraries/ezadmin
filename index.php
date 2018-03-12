@@ -76,6 +76,9 @@ if ('' == $realOutputPath || ! is_writable($translatedOutputPath)) {
 }
 
 $registry->outputPath = $realOutputPath;
+$registry->pushUpdates = 'true' == strtolower(trim($registry->config->get('pushUpdates')));
+$registry->uploadCommand = trim($registry->config->get('uploadCommand'));
+$registry->uploadTargets = $registry->config->get('uploads:+');
 $registry->template = new template($registry);
 
 $registry->router = new router($registry);
