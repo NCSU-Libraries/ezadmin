@@ -17,11 +17,11 @@
 		<uploadTarget></uploadTarget>
 	</uploads>
 	<links>
-		<userGuideUrl>https://staff.lib.ncsu.edu/confluence/display/IT/EZProxy+Configuration+Tool</userGuideUrl>
+		<userGuideUrl></userGuideUrl>
 		<footer>
 			<link>
-				<label>NCSU Libraries</label>
-				<url>http://www.lib.ncsu.edu/</url>
+				<label>~org name~</label>
+				<url>https://orgURL.org/</url>
 			</link>
 		</footer>
 	</links>
